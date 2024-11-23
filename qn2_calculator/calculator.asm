@@ -1,185 +1,308 @@
-section .data
-    prompt_num1 db "Enter the first number: ", 0
-    prompt_num2 db "Enter the second number: ", 0
-    prompt_op db "Enter the operation (+,-,*,/): ", 0
-    result_msg db "The result is: ", 0
-    error_msg db "Error: Division by zero!", 0
-    newline db 0xA, 0
+ section .data
+
+    ; Messages
+
+    msg1        db      10,'-Calculator-',10,0
+    lmsg1       equ     $ - msg1
+
+    msg2        db      10,'Number 1: ',0
+    lmsg2       equ     $ - msg2
+
+    msg3        db      'Number 2: ',0
+    lmsg3       equ     $ - msg3
+
+    msg4        db      10,'1. Add',10,0
+    lmsg4       equ     $ - msg4
+
+    msg5        db      '2. Subtract',10,0
+    lmsg5       equ     $ - msg5
+
+    msg6        db      '3. Multiply',10,0
+    lmsg6       equ     $ - msg6
+
+    msg7        db      '4. Divide',10,0
+    lmsg7       equ     $ - msg7
+
+    msg8        db      'Operation: ',0
+    lmsg8       equ     $ - msg8
+
+    msg9        db      10,'Result: ',0
+    lmsg9       equ     $ - msg9
+
+    msg10       db      10,'Invalid Option',10,0
+    lmsg10      equ     $ - msg10
+
+    nlinea      db      10,10,0
+    lnlinea     equ     $ - nlinea
 
 section .bss
-    num1 resb 20
-    num2 resb 20
-    operation resb 2 ; 1 character + null terminator
-    result resb 20
+
+    ; Spaces reserved for storing the values ​​provided by the user.
+
+    opc:        resb    2
+    num1:       resb    2
+    num2:       resb    2
+    result:     resb    2
 
 section .text
+
     global _start
 
 _start:
-    ; Prompt for the first number
-    mov rsi, prompt_num1
-    call print_string
-    mov rsi, num1
-    call read_input
-    call str_to_int
-    test rax, rax     ; checks if a valid number was entered
-    jz invalid_input  ; jump if zero (invalid input)
-    mov r8, rax       ; storing first value in r8
 
-    ; Prompt for the second number
-    mov rsi, prompt_num2
-    call print_string
-    mov rsi, num2
-    call read_input
-    call str_to_int
-    test rax, rax
-    jx invalid_input
-    mov r9, rax        ; storing second value in r9
+    ; Print on screen the message 1
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg1
+    mov edx, lmsg1
+    int 80h
 
-    ; Prommpt for the operation
-    mov rsi, prompt_op
-    call print_string
-    mov rsi, operation
-    call read_input
-    mov al, byte [operation]  ; loading operation into al
+    ; Print on screen the message 2
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg2
+    mov edx, lmsg2
+    int 80h
 
-    ; Perform operation
-    cmp al, '+'
-    je add_numbers
-    cmp al, '-'
-    je sub_numbers
-    cmp al, '*'
-    je mul_numbers
-    cmp al, '/'
-    je div_numbers
+    ; We get num1 value.
+    mov eax, 3
+    mov ebx, 0
+    mov ecx, num1
+    mov edx, 2
+    int 80h
 
-    ; Handle invalid operation
-    jmp invalid_operation
+    ; Print on screen the message 3
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg3
+    mov edx, lmsg3
+    int 80h
 
-invalid_input:
-    mov rsi, error_msg
-    call print_string
+    ; We get num2 value.
+    mov eax, 3
+    mov ebx, 0
+    mov ecx, num2
+    mov edx, 2
+    int 80h
+
+    ; Print on screen the message 4
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg4
+    mov edx, lmsg4
+    int 80h
+
+    ; Print on screen the message 5
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg5
+    mov edx, lmsg5
+    int 80h
+
+    ; Print on screen the message 6
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg6
+    mov edx, lmsg6
+    int 80h
+
+    ; Print on screen the message 7
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg7
+    mov edx, lmsg7
+    int 80h
+
+    ; Print on screen the message 8
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg8
+    mov edx, lmsg8
+    int 80h
+
+    ; We get the option selected.
+    mov ebx,0
+    mov ecx,opc
+    mov edx,2
+    mov eax,3
+    int 80h
+
+    mov ah, [opc]       ; Move the selected option to the registry ah
+    sub ah, '0'     ; Convert from ascii to decimal
+
+    ; We compare the value entered by the user to know what operation to perform.
+
+    cmp ah, 1
+    je add
+    cmp ah, 2
+    je subtract
+    cmp ah, 3
+    je multiply
+    cmp ah, 4
+    je divide
+
+    ; If the value entered by the user does not meet any of the above
+    ; conditions then we show an error message and we close the program.
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg10
+    mov edx, lmsg10
+    int 80h
+
     jmp exit
 
-add_numbers:
-    mov rax, r8
-    add rax, r9
-    jmp print_result
+add:
+    ; We keep the numbers in the registers al and bl
+    mov al, [num1]
+    mov bl, [num2]
 
-sub_numbers:
-    mov rax, r8
-    sub rax, r9
-    jmp print_result
+    ; Convert from ascii to decimal
+    sub al, '0'
+    sub bl, '0'
 
-mul_numbers:
-    mov rax, r8
-    imul rax, r9
-    jmp print_result
+    ; Add
+    add al, bl
 
-div_numbers:
-    cmp r9, 0
-    je division_error  ; checking for division by zero
-    xor rdx, rdx   ; clears rdx for division
-    mov rax, r8
-    div r9
-    jmp print_result
+    ; Conversion from decimal to ascii
+    add al, '0'
 
-division_error:
-    mov rsi, error_msg
-    call print_string
+    ; We move the result
+    mov [result], al
+
+    ; Print on screen the message 9
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg9
+    mov edx, lmsg9
+    int 80h
+
+    ; Print on screen the result
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, result
+    mov edx, 2
+    int 80h
+
+    ; We end the program
     jmp exit
 
-print_result:
-    mov rsi, result_msg
-    call print_string
+subtract:
+    ; We keep the numbers in the registers al and bl
+    mov al, [num1]
+    mov bl, [num2]
 
-    mov rsi, result
-    call int_to_str
-    mov rdx, rax    ;string length
-    mov rsi, result
-    call print_string
+    ; Convert from ascii to decimal
+    sub al, '0'
+    sub bl, '0'
+
+    ; Subtract
+    sub al, bl
+
+    ; Conversion from decimal to ascii
+    add al, '0'
+
+    ; We move the result
+    mov [result], al
+
+    ; Print on screen the message 9
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg9
+    mov edx, lmsg9
+    int 80h
+
+    ; Print on screen the result
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, result
+    mov edx, 1
+    int 80h
+
+    ; We end the program
     jmp exit
 
-invalid_operation:
-    mov rsi, error_msg
-    call print_string
+multiply:
+
+    ; We store the numbers in registers al and bl
+    mov al, [num1]
+    mov bl, [num2]
+
+    ; Convert from ascii to decimal
+    sub al, '0'
+    sub bl, '0'
+
+    ; Multiply. AX = AL x BL
+    mul bl
+
+    ; Conversion from decimal to ascii
+    add ax, '0'
+
+    ; We move the result
+    mov [result], ax
+
+    ; Print on screen the message 9
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg9
+    mov edx, lmsg9
+    int 80h
+
+    ; Print on screen the result
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, result
+    mov edx, 1
+    int 80h
+
+    ; We end the program
+    jmp exit
+
+divide:
+
+    ; We store the numbers in registers ax and bx
+    mov al, [num1]
+    mov bl, [num2]
+
+    mov dx, 0
+    mov ah, 0
+
+    ; Convert from ascii to decimall
+    sub al, '0'
+    sub bl, '0'
+
+    ; Division. AL = AX / BX
+    div bl
+
+    ; Conversion from decimal to ascii
+    add ax, '0'
+    ; We move the result
+    mov [result], ax
+
+    ; Print on screen the message 9
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, msg9
+    mov edx, lmsg9
+    int 80h
+
+    ; Print on screen the result
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, result
+    mov edx, 1
+    int 80h
+
+    ; We end the program
     jmp exit
 
 exit:
-    mov rax, 60   ; System call for exit
-    xor rdi, rdi  ; Exit status
-    syscall
-
-; ALL MY HELPER FUNCTIONS
-
-; Print a string
-print_string:
-    mov rax, 1      ; System call for write
-    mov rdi, 1      ; File descriptor (stdout)
-    mov rdx, rsi    ; Pointer to string
-    mov rsi, rdx    ; Length of the string
-    syscall
-    ret
-
-; Read input
-read_input:
-    mov rax, 0    ; System call for read
-    mov rdi, 0      ; File descriptor (stdin)
-    mov rdx, 20     ; Max bytes to read
-    syscall
-
-    ; replacing newline characters with null terminator
-    mov rbx, rsi    ; Start of the input buffer
-.replace_newline:
-    mov al, byte [rbx]  ; Load character
-    cmp al, 0xA         ; checking if it's newline
-    je .null_terminate
-    cmp al, 0           ; End of string
-    je .done
-    inc rbx             ; move to next character
-    jmp .replace_newline
-.null_terminate:
-    mov byte [rbx], 0   ; Replacing newline with null terminator
-.done:
-    ret
-
-; Convert string to integer
-str_to_int:
-    xor rax, rax    ; Clear rax
-    xor rbx, rbx    ; Clear rbx
-.convert_loop:
-    lodsb           ; Load byte from rsi
-    cmp al, 0     ; Check for newline
-    je .done
-    cmp al, '0'     ; Valid digit
-    jl .error
-    cmp al, '9'
-    jg .error
-    sub al, '0'     ; Converting ASCII to integer
-    imul rax, rax, 10   ; Multiply rax by 10
-    add rax, rbx    ; Add current digit
-    xor rbx, rbx    ; Clear rbx
-    jmp .convert_loop
-.done:
-    ret
-.error:
-    xor rax, rax    ; Return 0 for invalid input
-    ret
-
-; Converting integer to string
-int_to_str:
-    xor rcx, rcx    ; Clear rcx (digit count)
-    mov rdi, rsi    ; Store pointer to result
-    add rdi, 19     ; Point to the end of the buffer
-    mov byte [rdi], 0   ; Null-terminate the string
-.convert_loop:
-    xor rdx, rdx
-    div rbx         ; Divide rax by 10
-    add dl, '0'     ; Converting remainder to ASCII
-    dec rdi
-    mov [rdi], dl   ; Store ASCII digit
-    inc rcx         ; Increment digit count
-    test rax, rax   ; Check if quotient is zero
-    jnz .convert_loop
-    mov rax, rcx    ; Return string length
-    ret
+    ; Print on screen two new lines
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, nlinea
+    mov edx, lnlinea
+    int 80h
+    ; End the program
+    mov eax, 1
+    mov ebx, 0
+    int 80h

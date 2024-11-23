@@ -1,186 +1,159 @@
 section .data
-    prompt_num1 db "Enter the first number: ", 0
-    prompt_num2 db "Enter the second number: ", 0
-    prompt_op db "Enter the operation (+,-,*,/): ", 0
+    msg db "Enter first number: ", 0
+    msg2 db "Enter second number: ", 0
+    msg3 db "Choose operation (+, -, *, /): ", 0
     result_msg db "The result is: ", 0
-    error_msg db "Error: Division by zero!", 0
-    invalid_op_msg db "Error: Invalid operation!", 0
-    newline db 0xA, 0
+    newline db 10, 0
 
 section .bss
-    num1 resb 20
-    num2 resb 20
-    operation resb 2
-    result resb 20
+    num1 resb 16
+    num2 resb 16
+    op resb 1
+    result resb 16
 
 section .text
     global _start
 
 _start:
-    ; Prompt for the first number
-    mov rsi, prompt_num1
-    call print_string
+    ; Get first number
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg
+    mov rdx, 20
+    syscall
+
+    mov rax, 0
+    mov rdi, 0
     mov rsi, num1
-    call read_input
-    call str_to_int
-    test rax, rax
-    jz invalid_input
-    mov r8, rax         ; Store the first number
+    mov rdx, 16
+    syscall
 
-    ; Prompt for the second number
-    mov rsi, prompt_num2
-    call print_string
+    ; Get second number
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg2
+    mov rdx, 20
+    syscall
+
+    mov rax, 0
+    mov rdi, 0
     mov rsi, num2
-    call read_input
-    call str_to_int
-    test rax, rax
-    jz invalid_input
-    mov r9, rax         ; Store the second number
+    mov rdx, 16
+    syscall
 
-    ; Prompt for the operation
-    mov rsi, prompt_op
-    call print_string
-    mov rsi, operation
-    call read_input
-    mov al, byte [operation]
-    cmp al, '+'
-    je add_numbers
-    cmp al, '-'
-    je sub_numbers
-    cmp al, '*'
-    je mul_numbers
-    cmp al, '/'
-    je div_numbers
-    jmp invalid_operation
+    ; Get operation
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg3
+    mov rdx, 30
+    syscall
 
-add_numbers:
-    mov rax, r8
-    add rax, r9
+    mov rax, 0
+    mov rdi, 0
+    mov rsi, op
+    mov rdx, 1
+    syscall
+
+    ; Convert strings to integers
+    call atoi
+    mov rbx, rax
+    call atoi2
+    mov rcx, rax
+
+    ; Perform the operation
+    cmp byte [op], '+'
+    je add
+    cmp byte [op], '-'
+    je sub
+    cmp byte [op], '*'
+    je mul
+    cmp byte [op], '/'
+    je div
+
+add:
+    add rbx, rcx
+    mov rax, rbx
     jmp print_result
-
-sub_numbers:
-    mov rax, r8
-    sub rax, r9
+sub:
+    sub rbx, rcx
+    mov rax, rbx
     jmp print_result
-
-mul_numbers:
-    mov rax, r8
-    imul rax, r9
+mul:
+    imul rbx, rcx
+    mov rax, rbx
     jmp print_result
-
-div_numbers:
-    cmp r9, 0
-    je division_error
-    xor rdx, rdx        ; Clear remainder
-    mov rax, r8
-    div r9
+div:
+    xor rdx, rdx
+    mov rax, rbx
+    div rcx
     jmp print_result
-
-division_error:
-    mov rsi, error_msg
-    call print_string
-    jmp exit
-
-invalid_operation:
-    mov rsi, invalid_op_msg
-    call print_string
-    jmp exit
-
-invalid_input:
-    mov rsi, error_msg
-    call print_string
-    jmp exit
 
 print_result:
+    call itoa
+    mov rsi, result
+
+    mov rax, 1
+    mov rdi, 1
     mov rsi, result_msg
-    call print_string
+    mov rdx, 14
+    syscall
+
+    mov rax, 1
+    mov rdi, 1
     mov rsi, result
-    call int_to_str
-    mov rdx, rax        ; String length
-    mov rsi, result
-    call print_string
-    jmp exit
-
-exit:
-    mov rax, 60         ; Exit system call
-    xor rdi, rdi        ; Exit code 0
+    mov rdx, 16
     syscall
 
-; Helper Functions
-
-print_string:
-    mov rax, 1          ; Syscall: write
-    mov rdi, 1          ; File descriptor: stdout
-    mov rdx, rsi        ; Pointer to string
-    call string_length
+    ; Print newline
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, newline
+    mov rdx, 1
     syscall
-    ret
 
-read_input:
-    mov rax, 0          ; Syscall: read
-    mov rdi, 0          ; File descriptor: stdin
-    mov rdx, 20         ; Max bytes to read
+    ; Exit
+    mov rax, 60
+    xor rdi, rdi
     syscall
-    mov rbx, rsi        ; Start of buffer
-.replace_newline:
-    mov al, byte [rbx]
-    cmp al, 0xA
-    je .terminate
-    cmp al, 0
-    je .done
-    inc rbx
-    jmp .replace_newline
-.terminate:
-    mov byte [rbx], 0
-.done:
-    ret
 
-str_to_int:
-    xor rax, rax
-    xor rbx, rbx
-.convert_loop:
+atoi:
+    mov rax, 0
+    xor rbx, rbx ; Clearing rbx before accumulation
+    mov rsi, num1
+atoi_loop:
     lodsb
-    cmp al, 0
-    je .done
-    cmp al, '0'
-    jl .error
-    cmp al, '9'
-    jg .error
     sub al, '0'
+    cmp al, 0
+    jl atoi_done
     imul rax, rax, 10
     add rax, rbx
-    jmp .convert_loop
-.done:
-    ret
-.error:
-    xor rax, rax
+    jmp atoi_loop
+atoi_done:
     ret
 
-int_to_str:
-    xor rcx, rcx
-    mov rdi, rsi
-    add rdi, 19
-    mov byte [rdi], 0
-.convert:
+atoi2:
+    mov rax, 0
+    mov rsi, num2
+atoi2_loop:
+    lodsb
+    sub al, '0'
+    cmp al, 0
+    jl atoi2_done
+    imul rax, rax, 10
+    add rax, rbx
+    jmp atoi2_loop
+atoi2_done:
+    ret
+
+itoa:
+    mov rsi, result + 16
+    mov byte [rsi], 0
+itoa_loop:
+    dec rsi
     xor rdx, rdx
-    div rbx
+    div rcx
     add dl, '0'
-    dec rdi
-    mov [rdi], dl
-    inc rcx
+    mov [rsi], dl
     test rax, rax
-    jnz .convert
-    mov rax, rcx
-    ret
-
-string_length:
-    xor rax, rax
-    xor rbx, rbx
-.count_loop:
-    cmp byte [rsi + rbx], 0
-    je .done
-    inc rbx
-    jmp .count_loop
-.done:
-    mov rax, rbx
+    jnz itoa_loop
     ret
