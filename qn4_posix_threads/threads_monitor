@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# checking that both program binaries exist
+if [ ! -f "./single" ]; then
+    echo "Single-threaded program not found!"
+    exit 1
+fi
+
+if [ ! -f "./multi_threads" ]; then
+    echo "Multi-threaded program not found!"
+    exit 1
+fi
+
+run_and_monitor() {
+    local program=$1
+    local n=$2
+
+    echo "Running $program with n=$n"
+    /usr/bin/time -v ./$program $n &> temp_output.txt &
+
+    pid=$!
+
+    echo "Monitorting CPU usafge for PID $pid"
+    top -b -d 1 -n 5 -p $pid > top_output.txt &
+
+    wait $pid
+
+    execution_time=$(grep "Elasped (wall clock) time" temp_output.txt | awk '{print $5}')
+    cpu_usage=$(grep "User time" temp_output.txt | awk '{print $3}')
+    max_cpu_usage=$(grep -1 "Cpu(s)" top_output | tail -n 1 | awk '{print $2}')
+
+    echo "Execution time for $program with n=$n: $execution_time seconds"
+    echo "CPU usage (User time) for $program with n=$n: $cpu_usage"
+    echo "Max CPU usage for $program with n=$n: $max_cpu_usage%"
+}
+
+for n in $(seq 200 100 2000); do
+  echo "--------------------------------------------------"
+  echo "Testing with n=$n"
+  echo "--------------------------------------------------"
+  
+  # Run and monitor the single-threaded program
+  run_and_monitor "single" $n
+
+  echo "-----------------------------------------------"
+
+  # Run and monitor the multi-threaded program
+  run_and_monitor "multi_thread" $n
+
+  echo "--------------------------------------------------"
+done
+
+echo "Testing complete."
