@@ -1,0 +1,6 @@
+add_c.py
+data_calc.c
+dataman.egg-info/PKG-INFO
+dataman.egg-info/SOURCES.txt
+dataman.egg-info/dependency_links.txt
+dataman.egg-info/top_level.txt

@@ -4,10 +4,19 @@
 #include <math.h>
 
 #define MAX_LINE_LENGTH 1024
-#define MAX_ROWS 100
 // MAX_VAL is the maximum temp value that should be in csv file
-#define MAX_VAL 100
+#define MAX_VAL 101
 
+/**
+ * struct number - structure for an integer
+ * @pos: postive number
+ * @neg: negative number
+ */
+typedef struct number_s
+{
+    int pos;
+    int neg;
+} number;
 
 /**
  * struct temps_s - structure to store all average temperatures
@@ -21,6 +30,23 @@ typedef struct temps_s
     int size;
     int nb_temps;
 } temps_t;
+
+/**
+ * create_num - creates a number struc
+ * Return: pointer to number else NULL on failure
+ */
+number *create_num(void)
+{
+    number *new_num = malloc(sizeof(number));
+    if (!new_num)
+    {
+        perror("Failed to create number");
+        return NULL;
+    }
+    new_num->pos = 0;
+    new_num->neg = 0;
+    return new_num;
+}
 
 /**
  * create_temps - creates a temps_t struct
@@ -44,6 +70,22 @@ temps_t *create_temps(void)
         return NULL;
     }
     return new_temps;
+}
+
+/**
+ * free_freq - frees the allocated memory for the freq array
+ * @freq: array of number pointers
+ */
+void free_freq(number **freq)
+{
+    if (!freq)
+        return;
+    for (int i = 0; i < MAX_VAL; i++)
+    {
+        if (freq[i])
+            free(freq[i]);
+    }
+    free(freq);
 }
 
 
@@ -115,30 +157,54 @@ int find_mode(temps_t *temps)
 {
     int mode, max_freq, i;
     if (!temps || temps->nb_temps == 0)
-        return 0;
-    int *freq = calloc(MAX_VAL, sizeof(int));
+        return -1;
+    number **freq = calloc(MAX_VAL, sizeof(number *));
     if (!freq)
     {
         perror("Could not allocate memory for frequency array");
-        return 0;
+        return -2;
+    }
+    for (i = 0; i < MAX_VAL; i++)
+    {
+        freq[i] = create_num();
+        if (!freq[i])
+        {
+            free_freq(freq);
+            return -2;
+        }
     }
     mode = 0;
     max_freq = 0;
     for (i = 0; i < temps->nb_temps; i++)
     {
-        if (temps->temps_arr[i] < 0 || temps->temps_arr[i] >= MAX_VAL)
+        int value = temps->temps_arr[i];
+        int index = abs(value);
+        if (index >= MAX_VAL)
         {
             fprintf(stderr, "Value out of range %d\n", temps->temps_arr[i]);
-            free(freq);
-            return 0;
+            free_freq(freq);
+            return -3;
         }
-        freq[temps->temps_arr[i]]++;
-        if (freq[temps->temps_arr[i]] > max_freq)
+        if (value < 0 )
         {
-            max_freq = freq[temps->temps_arr[i]];
-            mode = temps->temps_arr[i];
+            freq[index]->neg++;
+            if (freq[index]->neg > max_freq)
+            {
+                max_freq = freq[index]->neg;
+                mode = value;
+            }
+        }
+        else
+        {
+            freq[index]->pos++;
+            if (freq[index]->pos > max_freq)
+            {
+                max_freq = freq[index]->pos;
+                mode = value;
+            }
         }
     }
+    free_freq(freq);
     return mode;
 }
 
@@ -148,9 +214,12 @@ int find_mode(temps_t *temps)
  * b: second value
  * Return: difference in value
  */
-int compare(void *a, void *b)
+int compare(const void *a, const void *b)
 {
-    return (*(int *)a - *(int *)b);
+    int int_a = *((int*)a);
+    int int_b = *((int *)b);
+
+    return int_a < int_b;
 }
 
 /**
@@ -227,10 +296,16 @@ static PyObject *mode(PyObject *self, PyObject *args)
     free(temps->temps_arr);
     free(temps);
 
-    if (mode_val == 0)
-        return PyErr_Format(PyExc_RuntimeError, "Could not calculate mode");
+    if (mode_val == -1)
+        return PyErr_Format(PyExc_RuntimeError, "No temps structure");
 
-    return PyLong_FromLong(mode);
+    else if (mode_val == -2)
+        return PyErr_Format(PyExc_RuntimeError, "Could not create frequency array");
+
+    else if (mode_val == -3)
+        return PyErr_Format(PyExc_RuntimeError, "Value out of range");
+
+    return PyLong_FromLong(mode_val);
 }
 
 /**
@@ -295,4 +370,24 @@ static PyObject *standev(PyObject *self, PyObject *args)
         return PyErr_Format(PyExc_RuntimeError, "Could not calculate standard deviation");
 
     return PyFloat_FromDouble(stddev);
+}
+
+static PyMethodDef StatMethods[] = {
+    {"mode", mode, METH_VARARGS, "Finds mode in array of numbers"},
+    {"median", median, METH_VARARGS, "Finds median in array of numbers"},
+    {"standev", standev, METH_VARARGS, "Calculates the standard deviation from array of numbers"},
+    {NULL, NULL, 0, NULL}
+};
+
+static struct PyModuleDef statmodule = {
+    PyModuleDef_HEAD_INIT,
+    "dataman",
+    "A module for statictical calculations",
+    -1,
+    StatMethods
+};
+
+PyMODINIT_FUNC PyInit_dataman(void)
+{
+    return PyModule_Create(&statmodule);
 }

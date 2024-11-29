@@ -6,5 +6,5 @@ module = Extension('dataman', sources=['data_calc.c'])
 # running the setup
 setup(name='dataman',
     version='1.0',
-    description='A C extension for mode, median and standard deviation'
+    description='A C extension for mode, median and standard deviation',
     ext_modules=[module])
