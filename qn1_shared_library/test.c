@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Usage: %s <namesfile.txt>\n", argv[0]);
         return EXIT_FAILURE;
     }
+    printf("%s\n", argv[1]);
     if (!count_n_sort(argv[1]))
     {
         fprintf(stderr, "An error occurred while processing the file.\n");

@@ -14,7 +14,7 @@ int compare_names(const void *a, const void *b)
 {
     const char *name1 = *(const char **)a;
     const char *name2 = *(const char **)b;
-    return strcmp(name1, name2);
+    return strcasecmp(name1, name2);
 }
 
 /**
@@ -52,14 +52,14 @@ int sorted_names(const char *filename, char *names[], int count)
     }
     for (i = 0; i < count; i++)
     {
-        if (fputs(names[i], file) == EOF)
+        if (fprintf(file, "%s\n", names[i]) < 0)
         {
             perror("Could not write to file");
             fclose(file);
             return 0;
         }
     }
-    printf("Sorted names add to %s\n", new_filename);
+    printf("Sorted names added to %s\n", new_filename);
     fclose(file);
     return 1;
 }
@@ -73,7 +73,7 @@ int count_n_sort(const char *filename)
 {
     char *names[MAX_NAMES];
     char line[256];
-    int count, i;
+    int count, i, success = 1;
     FILE *file;
     if (!filename)
         return 0;
@@ -86,20 +86,34 @@ int count_n_sort(const char *filename)
     count = 0;
     while (fgets(line, sizeof(line), file))
     {
-        line[strspn(line, "\n")] = '\0';
+        line[strcspn(line, "\n")] = '\0';
+        printf("%s\n", line);
         names[count] = strdup(line);
         count++;
     }
     fclose(file);
+
+    if (count == 0) {
+        fprintf(stderr, "No names found in the file.\n");
+        return 0;
+    }
+
     sort_names(names, count);
+
+    // for (i = 0; i < count; i++)
+    //     printf("%s\n", names[i]);
+    
     if (!sorted_names(filename, names, count))
     {
         perror("Could not add sorted names to file\n");
-        return 0;
-    }
+        success = 0;
+        goto cleanup;
+        }
     printf("%d entries in %s\n", count, filename);
-    for (i = 0; i < count; i++) 
-        free(names[i]);
 
-    return 1;
+    cleanup:
+        for (i = 0; i < count; i++) 
+            free(names[i]);
+
+    return success;
 }
