@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #define MAX_LINE_LENGTH 1024
 #define MAX_ROWS 100
@@ -142,6 +143,65 @@ int find_mode(temps_t *temps)
 }
 
 /**
+ * compare - comparison funtion for qsort
+ * a: first value
+ * b: second value
+ * Return: difference in value
+ */
+int compare(void *a, void *b)
+{
+    return (*(int *)a - *(int *)b);
+}
+
+/**
+ * find_median - finds the median integer from array of integers
+ * @temps: pointer to temps structure
+ * Return: median val else 0 on error
+ */
+double find_median(temps_t *temps)
+{
+    if (!temps)
+        return 0;
+
+    qsort(temps->temps_arr, temps->nb_temps, sizeof(int), compare);
+
+    if (temps->nb_temps % 2 == 0)
+    {
+        return (temps->temps_arr[temps->nb_temps / 2 - 1] + temps->temps_arr[temps->nb_temps / 2]) / 2.0;
+    }
+    else
+    {
+        return temps->temps_arr[temps->nb_temps / 2];
+    }
+}
+
+/**
+ * cal_stddev - calculate the standard deviation of an array
+ * @temps: pointer to temps structure
+ * Return: standard deviation else 0 on error
+ */
+double cal_stddev(temps_t *temps)
+{
+    double mean, sum_of_squares, variance;
+    int i;
+    if (!temps || temps->nb_temps == 0)
+        return 0;
+
+    mean = 0;
+    for (i = 0; i < temps->nb_temps; i++)
+        mean += temps->temps_arr[i];
+    mean /= temps->nb_temps;
+
+    sum_of_squares = 0;
+    for (i = 0; i < temps->nb_temps; i++)
+        sum_of_squares += ((temps->temps_arr[i] - mean) * (temps->temps_arr[i] - mean));
+
+    variance = sum_of_squares / temps->nb_temps;
+
+    return sqrt(variance);
+}
+
+/**
  * mode - calculates the mode temperature from dataset
  * @self: object
  * @args: arguments
@@ -152,7 +212,7 @@ static PyObject *mode(PyObject *self, PyObject *args)
     char *filename;
     temps_t *temps;
     int mode_val;
-    if (!PyArg_ParseTuple(args, "s", filename))
+    if (!PyArg_ParseTuple(args, "s", &filename))
         return NULL;
     temps = create_temps();
     if (!temps)
@@ -171,4 +231,68 @@ static PyObject *mode(PyObject *self, PyObject *args)
         return PyErr_Format(PyExc_RuntimeError, "Could not calculate mode");
 
     return PyLong_FromLong(mode);
+}
+
+/**
+ * median - calculates the median temperature from dataset
+ * @self: object
+ * @args: arguments
+ * Return: pointer to solution
+ */
+static PyObject *median(PyObject *self, PyObject *args)
+{
+    char *filename;
+    temps_t *temps;
+    double median_val;
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return NULL;
+    temps = create_temps();
+    if (!temps)
+        return PyErr_NoMemory();
+    if (!extract_data(filename, temps))
+    {
+        free(temps->temps_arr);
+        free(temps);
+        return PyErr_Format(PyExc_RuntimeError, "Failed to extract data");
+    }
+    median_val = find_median(temps);
+    free(temps->temps_arr);
+    free(temps);
+
+    if (median_val == 0)
+        return PyErr_Format(PyExc_RuntimeError, "Could not calculate median");
+
+    return PyFloat_FromDouble(median_val);
+}
+
+/**
+ * standev - calculates the standard deviation from the mean temperature
+ * @self: object
+ * @args: arguments
+ * Return: pointer to solution
+ */
+static PyObject *standev(PyObject *self, PyObject *args)
+{
+    char *filename;
+    temps_t *temps;
+    double stddev;
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return NULL;
+    temps = create_temps();
+    if (!temps)
+        return PyErr_NoMemory();
+    if (!extract_data(filename, temps))
+    {
+        free(temps->temps_arr);
+        free(temps);
+        return PyErr_Format(PyExc_RuntimeError, "Failed to extract data");
+    }
+    stddev = cal_stddev(temps);
+    free(temps->temps_arr);
+    free(temps);
+
+    if (stddev == 0)
+        return PyErr_Format(PyExc_RuntimeError, "Could not calculate standard deviation");
+
+    return PyFloat_FromDouble(stddev);
 }
