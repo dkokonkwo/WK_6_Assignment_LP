@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # checking that both program binaries exist
-if [ ! -f "./single" ]; then
+if [ ! -f "./single_thread" ]; then
     echo "Single-threaded program not found!"
     exit 1
 fi
@@ -16,36 +16,49 @@ run_and_monitor() {
     local n=$2
 
     echo "Running $program with n=$n"
-    /usr/bin/time -v ./$program $n &> temp_output.txt &
+
+    start_time=$(date +%s%N)
+    # /usr/bin/time -v
+    ./$program $n &> temp_output.txt &
 
     pid=$!
 
-    echo "Monitorting CPU usafge for PID $pid"
+    echo "Monitoring CPU usage for PID $pid"
     top -b -d 1 -n 5 -p $pid > top_output.txt &
+    top_pid=$!
 
     wait $pid
+    wait $top_pid
 
-    execution_time=$(grep "Elasped (wall clock) time" temp_output.txt | awk '{print $5}')
-    cpu_usage=$(grep "User time" temp_output.txt | awk '{print $3}')
-    max_cpu_usage=$(grep -1 "Cpu(s)" top_output | tail -n 1 | awk '{print $2}')
+    # End time in nanoseconds
+    end_time=$(date +%s%N)
 
-    echo "Execution time for $program with n=$n: $execution_time seconds"
-    echo "CPU usage (User time) for $program with n=$n: $cpu_usage"
+    # execution_time=$(grep "Elapsed (wall clock) time" temp_output.txt | awk '{print $8}')
+    elapsed_time=$(echo "scale=2; ($end_time - $start_time) / 1000000000" | bc)
+    cpu_usage=$(grep "User time" temp_output.txt | awk '{print $4}')
+    max_cpu_usage=$(grep "Cpu(s)" top_output.txt | awk -F',' '{print $1}' | awk '{print $2}')
+
+
+    echo "Execution time for $program with n=$n: $elapsed_time seconds"
+    echo "CPU usage (User time) for $program with n=$n: $cpu_usage seconds"
     echo "Max CPU usage for $program with n=$n: $max_cpu_usage%"
+
+    # Cleaning up temporary files
+    rm -f temp_output.txt top_output.txt
 }
 
-for n in $(seq 200 100 2000); do
+for n in $(seq 200 600 2000); do
   echo "--------------------------------------------------"
   echo "Testing with n=$n"
   echo "--------------------------------------------------"
-  
+
   # Run and monitor the single-threaded program
-  run_and_monitor "single" $n
+  run_and_monitor "single_thread" $n
 
   echo "-----------------------------------------------"
 
   # Run and monitor the multi-threaded program
-  run_and_monitor "multi_thread" $n
+  run_and_monitor "multi_threads" $n
 
   echo "--------------------------------------------------"
 done

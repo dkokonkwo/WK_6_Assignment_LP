@@ -40,26 +40,29 @@ void *sum_range(void *arg)
  * main - calculates the sum of n numbers usins multiple threads
  * Return: 0 on success, 1 on error
  */
-int main(void)
+int main(int argc, char *argv[])
 {
     unsigned long n, start, total_sum = 0;
     int i;
-    pthread_t threads[(MAX_NUMBER - MIN_NUMBER + 1) / MAX_SIZE];
-    ThreadData thread_data[(MAX_NUMBER - MIN_NUMBER + 1) /MAX_SIZE];
-    int thread_count = 0;
+
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <number between %d and %d>\n", argv[0], MIN_NUMBER, MAX_NUMBER);
+        return 1;
+    }
 
     printf("Calculate the sum of n numbers with multiple threads\n");
-    while (1)
+    n = strtoul(argv[1], NULL, 10);
+    if (n < MIN_NUMBER || n > MAX_NUMBER)
     {
-        printf("Enter a number between 200 and 2000: ");
-        if (scanf("%lu", &n) != 1 || n <= MIN_NUMBER || n > MAX_NUMBER)
-        {
-            printf("Invalid input.Please try again.\n");
-            while (getchar() != '\n');
-        }
-        else
-            break;
+        fprintf(stderr, "Error: Number must be between %d and %d.\n", MIN_NUMBER, MAX_NUMBER);
+        return 1;
     }
+
+    int max_threads = (n / MAX_SIZE) + (n % MAX_SIZE ? 1 : 0);
+    pthread_t threads[max_threads];
+    ThreadData thread_data[max_threads];
+    int thread_count = 0;
 
     for (start = 1; start<= n; start += MAX_SIZE)
     {
