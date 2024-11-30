@@ -40,9 +40,9 @@ section .bss
     ; Spaces reserved for storing the values ​​provided by the user.
 
     opc:        resb    2
-    num1:       resb    2
-    num2:       resb    2
-    result:     resb    2
+    num1:       resb    10
+    num2:       resb    10
+    result:     resb    10
 
 section .text
 
@@ -68,7 +68,7 @@ _start:
     mov eax, 3
     mov ebx, 0
     mov ecx, num1
-    mov edx, 2
+    mov edx, 10
     int 80h
 
     ; Print on screen the message 3
@@ -82,7 +82,7 @@ _start:
     mov eax, 3
     mov ebx, 0
     mov ecx, num2
-    mov edx, 2
+    mov edx, 10
     int 80h
 
     ; Print on screen the message 4
