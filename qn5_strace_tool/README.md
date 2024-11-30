@@ -8,3 +8,4 @@ Step to test the program:
 - Build the program: make
 - Run the program with strace: make run
 - Clean up the generated files: make clean
+
